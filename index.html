@@ -1,0 +1,1071 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Predator-Prey Ecosystem</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.1/p5.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        canvas {
+            display: block;
+            margin: 0 auto;
+            border-radius: 0.5rem;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            background-color: #0f172a;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .stats-box {
+            background-color: rgba(15, 23, 42, 0.9);
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .control-panel {
+            background-color: rgba(15, 23, 42, 0.9);
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 24px;
+        }
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #334155;
+            transition: .4s;
+            border-radius: 24px;
+        }
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 16px;
+            width: 16px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        input:checked + .slider {
+            background-color: #4ade80;
+        }
+        input:checked + .slider:before {
+            transform: translateX(26px);
+        }
+        .tooltip {
+            position: relative;
+            display: inline-block;
+        }
+        .tooltip .tooltip-text {
+            visibility: hidden;
+            width: 200px;
+            background-color: #1e293b;
+            color: #fff;
+            text-align: center;
+            border-radius: 6px;
+            padding: 5px;
+            position: absolute;
+            z-index: 1;
+            bottom: 125%;
+            left: 50%;
+            transform: translateX(-50%);
+            opacity: 0;
+            transition: opacity 0.3s;
+            font-size: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .tooltip:hover .tooltip-text {
+            visibility: visible;
+            opacity: 1;
+        }
+        .btn {
+            transition: all 0.2s ease;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        .btn:active {
+            transform: translateY(0);
+        }
+        .particle-counter {
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900 min-h-screen text-white overflow-x-hidden">
+    <div class="container mx-auto px-4 py-8 relative">
+        <!-- Header Section -->
+        <div class="text-center mb-8 flex flex-col items-center">
+            <div class="flex items-center justify-center mb-4">
+                <i class="fas fa-leaf text-green-400 text-4xl mr-3"></i>
+                <h1 class="text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-blue-500">
+                    EcoSim
+                </h1>
+                <i class="fas fa-paw text-red-400 text-4xl ml-3"></i>
+            </div>
+            <p class="text-lg text-gray-300 max-w-3xl mx-auto">
+                An advanced simulation of predator-prey dynamics with customizable ecosystem parameters
+            </p>
+        </div>
+
+        <!-- Main Content Area -->
+        <div class="flex flex-col lg:flex-row gap-8">
+            <!-- Simulation Canvas -->
+            <div class="lg:w-3/4 relative">
+                <div id="canvas-container" class="relative rounded-xl overflow-hidden"></div>
+                
+                <!-- Stats Overlay -->
+                <div id="stats" class="stats-box absolute top-4 right-4 rounded-lg p-4 text-sm shadow-lg">
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="flex items-center">
+                            <div class="w-3 h-3 rounded-full bg-green-400 mr-2"></div>
+                            <span>Prey: <span id="prey-count" class="font-bold particle-counter">0</span></span>
+                        </div>
+                        <button id="add-prey" class="ml-4 px-2 py-1 bg-green-600 rounded text-xs btn hover:bg-green-700">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                    </div>
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="flex items-center">
+                            <div class="w-3 h-3 rounded-full bg-red-500 mr-2"></div>
+                            <span>Predators: <span id="predator-count" class="font-bold">0</span></span>
+                        </div>
+                        <button id="add-predator" class="ml-4 px-2 py-1 bg-red-600 rounded text-xs btn hover:bg-red-700">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                    </div>
+                    <div class="flex items-center">
+                        <div class="w-3 h-3 rounded-full bg-blue-400 mr-2"></div>
+                        <div>
+                            <span>FPS: <span id="fps" class="font-bold">0</span></span>
+                            <span class="mx-2">|</span>
+                            <span>Time: <span id="sim-time">00:00</span></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Control Panel -->
+            <div class="lg:w-1/4">
+                <div class="control-panel rounded-xl p-6 shadow-lg h-full">
+                    <h2 class="text-xl font-semibold mb-4 flex items-center">
+                        <i class="fas fa-sliders-h mr-2 text-blue-400"></i>
+                        Control Panel
+                    </h2>
+                    
+                    <div class="space-y-6">
+                        <!-- Environment Settings -->
+                        <div>
+                            <h3 class="text-sm font-medium mb-2 flex items-center">
+                                <i class="fas fa-mountain mr-2 text-gray-400"></i>
+                                Environment
+                            </h3>
+                            <div class="space-y-3">
+                                <div>
+                                    <label for="backgroundType" class="block text-xs font-medium mb-1">Background</label>
+                                    <select id="backgroundType" class="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500">
+                                        <option value="stars">Starry Sky</option>
+                                        <option value="gradient">Color Gradient</option>
+                                        <option value="grid">Grid Pattern</option>
+                                        <option value="plain">Plain Dark</option>
+                                    </select>
+                                </div>
+                                <div class="flex items-center justify-between">
+                                    <span class="text-xs">Day/Night Cycle</span>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="dayNightToggle">
+                                        <span class="slider"></span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Prey Settings -->
+                        <div>
+                            <h3 class="text-sm font-medium mb-2 flex items-center">
+                                <i class="fas fa-dove mr-2 text-green-400"></i>
+                                Prey Settings
+                            </h3>
+                            <div class="space-y-3">
+                                <div>
+                                    <label for="preyCount" class="block text-xs font-medium mb-1">Initial Prey Count</label>
+                                    <input type="range" id="preyCount" min="10" max="300" value="100" 
+                                           class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer">
+                                    <div class="flex justify-between text-xs">
+                                        <span id="preyCountValue">100</span>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label for="preySpeed" class="block text-xs font-medium mb-1">Max Speed</label>
+                                    <input type="range" id="preySpeed" min="0.5" max="5" step="0.1" value="2" 
+                                           class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer">
+                                    <div class="flex justify-between text-xs">
+                                        <span id="preySpeedValue">2.0</span>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label for="preyReproduction" class="block text-xs font-medium mb-1">Reproduction Rate</label>
+                                    <input type="range" id="preyReproduction" min="1" max="20" value="5" 
+                                           class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer">
+                                    <div class="flex justify-between text-xs">
+                                        <span>Slow</span>
+                                        <span id="preyReproductionValue">5s</span>
+                                        <span>Fast</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Predator Settings -->
+                        <div>
+                            <h3 class="text-sm font-medium mb-2 flex items-center">
+                                <i class="fas fa-paw mr-2 text-red-400"></i>
+                                Predator Settings
+                            </h3>
+                            <div class="space-y-3">
+                                <div>
+                                    <label for="predatorCount" class="block text-xs font-medium mb-1">Initial Predator Count</label>
+                                    <input type="range" id="predatorCount" min="1" max="20" value="5" 
+                                           class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer">
+                                    <div class="flex justify-between text-xs">
+                                        <span id="predatorCountValue">5</span>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label for="predatorSpeed" class="block text-xs font-medium mb-1">Hunting Speed</label>
+                                    <input type="range" id="predatorSpeed" min="0.5" max="3" step="0.1" value="1.5" 
+                                           class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer">
+                                    <div class="flex justify-between text-xs">
+                                        <span id="predatorSpeedValue">1.5</span>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label for="predatorAggression" class="block text-xs font-medium mb-1">Aggressiveness</label>
+                                    <input type="range" id="predatorAggression" min="50" max="200" value="100" 
+                                           class="wfull h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer">
+                                    <div class="flex justify-between text-xs">
+                                        <span>Passive</span>
+                                        <span id="predatorAggressionValue">100%</span>
+                                        <span>Aggressive</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Simulation Controls -->
+                        <div class="pt-4 border-t border-gray-700">
+                            <h3 class="text-sm font-medium mb-2 flex items-center">
+                                <i class="fas fa-play-circle mr-2 text-blue-400"></i>
+                                Simulation Controls
+                            </h3>
+                            <div class="grid grid-cols-2 gap-3">
+                                <button id="reset-btn" class="bg-gray-700 hover:bg-gray-600 text-white py-2 px-3 rounded btn text-sm flex items-center justify-center">
+                                    <i class="fas fa-redo mr-1"></i> Reset
+                                </button>
+                                <button id="pause-btn" class="bg-blue-600 hover:bg-blue-500 text-white py-2 px-3 rounded btn text-sm flex items-center justify-center">
+                                    <i class="fas fa-pause mr-1"></i> Pause
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Info Panel -->
+        <div class="control-panel max-w-4xl mx-auto mt-8 rounded-xl p-6 shadow-lg">
+            <h2 class="text-xl font-semibold mb-4 flex items-center">
+                <i class="fas fa-info-circle mr-2 text-yellow-400"></i>
+                Simulation Information
+            </h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div>
+                    <h4 class="text-sm font-medium mb-2 text-green-300 flex items-center">
+                        <i class="fas fa-lightbulb mr-2"></i> Quick Tips
+                    </h4>
+                    <ul class="text-xs space-y-2">
+                        <li class="flex items-start">
+                            <i class="fas fa-mouse-pointer mt-1 mr-2 text-xs"></i>
+                            <span>Click anywhere to spawn prey particles</span>
+                        </li>
+                        <li class="flex items-start">
+                            <i class="fas fa-keyboard mt-1 mr-2 text-xs"></i>
+                            <span>Hold <kbd class="px-1.5 py-0.5 bg-gray-700 rounded text-xs">P</kbd> to boost predator speed</span>
+                        </li>
+                        <li class="flex items-start">
+                            <i class="fas fa-sliders-h mt-1 mr-2 text-xs"></i>
+                            <span>Adjust sliders to change ecosystem dynamics</span>
+                        </li>
+                    </ul>
+                </div>
+                
+                <div>
+                    <h4 class="text-sm font-medium mb-2 text-blue-300 flex items-center">
+                        <i class="fas fa-chart-line mr-2"></i> Population Stats
+                    </h4>
+                    <div class="text-xs space-y-1">
+                        <div>Current Prey: <span id="stats-prey" class="font-bold">0</span></div>
+                        <div>Current Predators: <span id="stats-predators" class="font-bold">0</span></div>
+                        <div>Births Today: <span id="stats-births" class="font-bold">0</span></div>
+                        <div>Deaths Today: <span id="stats-deaths" class="font-bold">0</span></div>
+                    </div>
+                </div>
+                
+                <div>
+                    <h4 class="text-sm font-medium mb-2 text-purple-300 flex items-center">
+                        <i class="fas fa-code-branch mr-2"></i> About
+                    </h4>
+                    <p class="text-xs">
+                        This simulation models predator-prey dynamics using principles from ecology and complex systems. 
+                        Particles follow behaviors like flocking, fleeing, and hunting.
+                    </p>
+                </div>
+            </div>
+        </div>
+        
+        <footer class="text-center text-xs text-gray-400 mt-12 flex flex-col items-center">
+            <p class="flex items-center justify-center">
+                <i class="fas fa-code mr-2"></i>
+                Built with p5.js & Tailwind CSS | EcoSim v2.0
+            </p>
+            <p class="mt-2">
+                Developed by Saqlain Abbas
+            </p>
+            <div class="flex space-x-4 mt-2">
+                <a href="https://github.com/razee4315" target="_blank" class="hover:text-white transition" title="GitHub"><i class="fab fa-github"></i></a>
+                <a href="https://linkedin.com/in/saqlainrazee" target="_blank" class="hover:text-white transition" title="LinkedIn"><i class="fab fa-linkedin"></i></a>
+                <a href="#" class="hover:text-white transition" title="Documentation"><i class="fas fa-book"></i></a>
+                <a href="#" class="hover:text-white transition" title="Share"><i class="fas fa-share-alt"></i></a>
+            </div>
+        </footer>
+    </div>
+
+    <script>
+        // Enhanced simulation parameters with more options
+        const params = {
+            // Population settings
+            initialPrey: 100,
+            maxPrey: 300,
+            initialPredators: 5,
+            maxPredators: 20,
+            
+            // Behavior settings
+            preyReproductionRate: 5000, // ms
+            preySize: 4,
+            predatorSize: 10,
+            predatorEatDistance: 12,
+            preyFleeDistance: 100,
+            predatorAggression: 100, // 50-200 scale
+            cohesionRadius: 50,
+            alignmentRadius: 40,
+            separationRadius: 30,
+            
+            // Visual settings
+            trailLength: 10,
+            backgroundType: 'stars',
+            dayNightCycle: false,
+            showDebug: false,
+            
+            // Stats tracking
+            preyBirths: 0,
+            preyDeaths: 0,
+            simulationStartTime: 0
+        };
+
+        let canvas;
+        let particles = [];
+        let predators = [];
+        let stars = [];
+        let speedBoostActive = false;
+        let isNight = false;
+        let isPaused = false;
+        let lastReproductionTime = 0;
+        let lastCycleChange = 0;
+        let simulationTime = 0;
+        let lastUpdateTime = 0;
+
+        // Improved Particle class (prey)
+        class Particle {
+            constructor(x, y, inheritedSpeed) {
+                this.position = createVector(x || random(width), y || random(height));
+                this.velocity = p5.Vector.random2D();
+                this.velocity.setMag(inheritedSpeed || random(0.5, 2));
+                this.maxSpeed = parseFloat(document.getElementById('preySpeed').value);
+                this.size = params.preySize;
+                this.history = [];
+                this.color = color(100, 255, 100);
+                this.age = 0;
+                this.generation = 0;
+                this.energy = 100;
+            }
+
+            update() {
+                if (isPaused) return;
+                
+                this.age++;
+                this.energy = max(this.energy - 0.01, 0);
+                
+                // Increase max speed based on slider
+                this.maxSpeed = parseFloat(document.getElementById('preySpeed').value);
+                
+                // Apply flocking behavior if not fleeing
+                this.flock();
+                
+                // Update position
+                this.position.add(this.velocity);
+                
+                // Wrap around edges
+                if (this.position.x > width) this.position.x = 0;
+                if (this.position.x < 0) this.position.x = width;
+                if (this.position.y > height) this.position.y = 0;
+                if (this.position.y < 0) this.position.y = height;
+                
+                // Record history for trails
+                let v = createVector(this.position.x, this.position.y);
+                this.history.push(v);
+                if (this.history.length > params.trailLength) {
+                    this.history.splice(0, 1);
+                }
+            }
+
+            flock() {
+                let alignment = createVector();
+                let cohesion = createVector();
+                let separation = createVector();
+                let totalAlign = 0;
+                let totalCohesion = 0;
+                let totalSeparation = 0;
+                
+                // Check for nearby predators
+                let fleeForce = createVector();
+                let closePredator = false;
+                
+                for (let predator of predators) {
+                    let d = p5.Vector.dist(this.position, predator.position);
+                    let adjustedFleeDistance = map(params.predatorAggression, 50, 200, 
+                                                  params.preyFleeDistance * 0.5, params.preyFleeDistance * 1.5);
+                    
+                    // Flee from predators
+                    if (d < adjustedFleeDistance) {
+                        closePredator = true;
+                        let flee = p5.Vector.sub(this.position, predator.position);
+                        flee.normalize();
+                        flee.mult(map(d, 0, adjustedFleeDistance, 3, 0.3));
+                        fleeForce.add(flee);
+                    }
+                }
+                
+                // If fleeing, skip flocking and just flee
+                if (closePredator) {
+                    fleeForce.setMag(this.maxSpeed * 1.5);
+                    this.velocity.lerp(fleeForce, 0.1);
+                    return;
+                }
+                
+                // Regular flocking behavior when not fleeing
+                for (let other of particles) {
+                    if (other === this) continue;
+                    
+                    let d = p5.Vector.dist(this.position, other.position);
+                    
+                    // Alignment: Steer to match heading with neighbors
+                    if (d < params.alignmentRadius) {
+                        alignment.add(other.velocity);
+                        totalAlign++;
+                    }
+                    
+                    // Cohesion: Move toward center of neighbors
+                    if (d < params.cohesionRadius) {
+                        cohesion.add(other.position);
+                        totalCohesion++;
+                    }
+                    
+                    // Separation: Avoid crowding neighbors
+                    if (d < params.separationRadius) {
+                        let diff = p5.Vector.sub(this.position, other.position);
+                        diff.div(d * d); // Weight by distance
+                        separation.add(diff);
+                        totalSeparation++;
+                    }
+                }
+                
+                // Apply forces if neighbors found
+                if (totalAlign > 0) {
+                    alignment.div(totalAlign);
+                    alignment.setMag(this.maxSpeed);
+                    alignment.sub(this.velocity);
+                    alignment.limit(0.1);
+                }
+                
+                if (totalCohesion > 0) {
+                    cohesion.div(totalCohesion);
+                    cohesion.sub(this.position);
+                    cohesion.setMag(this.maxSpeed);
+                    cohesion.sub(this.velocity);
+                    cohesion.limit(0.1);
+                }
+                
+                if (totalSeparation > 0) {
+                    separation.div(totalSeparation);
+                    separation.setMag(this.maxSpeed);
+                    separation.sub(this.velocity);
+                    separation.limit(0.3);
+                }
+                
+                // Apply all forces
+                this.velocity.add(alignment);
+                this.velocity.add(cohesion);
+                this.velocity.add(separation);
+                this.velocity.limit(this.maxSpeed);
+            }
+
+            show() {
+                // Draw history trail with energy-based fading
+                noFill();
+                beginShape();
+                for (let i = 0; i < this.history.length; i++) {
+                    let alpha = map(i, 0, this.history.length, 100, 10);
+                    stroke(100, 255, 100, alpha * (this.energy/100));
+                    vertex(this.history[i].x, this.history[i].y);
+                }
+                endShape();
+                
+                // Draw particle with energy-based size
+                let displaySize = map(this.energy, 0, 100, this.size * 0.7, this.size * 1.3);
+                fill(100, 255, 100, 200);
+                noStroke();
+                ellipse(this.position.x, this.position.y, displaySize);
+            }
+        }
+
+        // Enhanced Predator class
+        class Predator {
+            constructor(x, y) {
+                this.position = createVector(x || random(width), y || random(height));
+                this.velocity = p5.Vector.random2D();
+                this.velocity.setMag(1);
+                this.maxSpeed = parseFloat(document.getElementById('predatorSpeed').value);
+                this.size = params.predatorSize;
+                this.history = [];
+                this.color = color(255, 100, 100);
+                this.hunger = 0;
+                this.pulseOffset = random(TWO_PI);
+                this.energy = 100;
+                this.kills = 0;
+            }
+
+            update() {
+                if (isPaused) return;
+                
+                // Update max speed based on slider
+                this.maxSpeed = parseFloat(document.getElementById('predatorSpeed').value);
+                
+                // Boost speed if player is holding 'P'
+                let currentMaxSpeed = this.maxSpeed * (speedBoostActive ? 2 : 1) * (isNight ? 0.7 : 1);
+                
+                // Hunt behavior: find the closest prey
+                if (particles.length > 0) {
+                    let closestPrey = null;
+                    let closestDist = Infinity;
+                    
+                    for (let prey of particles) {
+                        let d = p5.Vector.dist(this.position, prey.position);
+                        if (d < closestDist) {
+                            closestDist = d;
+                            closestPrey = prey;
+                        }
+                    }
+                    
+                    if (closestPrey) {
+                        // Move toward the closest prey with some randomness
+                        let towardsPrey = p5.Vector.sub(closestPrey.position, this.position);
+                        let randomness = p5.Vector.random2D().mult(0.3);
+                        towardsPrey.add(randomness);
+                        towardsPrey.setMag(currentMaxSpeed);
+                        this.velocity.lerp(towardsPrey, 0.1);
+                        
+                        // Eat prey if close enough
+                        let eatDistance = map(params.predatorAggression, 50, 200, 
+                                            params.predatorEatDistance * 0.7, params.predatorEatDistance * 1.3);
+                        
+                        if (closestDist < eatDistance) {
+                            let index = particles.indexOf(closestPrey);
+                            if (index > -1) {
+                                particles.splice(index, 1);
+                                this.size = min(this.size + 0.3, params.predatorSize * 2);
+                                this.maxSpeed = max(this.maxSpeed - 0.01, this.maxSpeed * 0.95);
+                                this.hunger = 0;
+                                this.energy = min(this.energy + 20, 100);
+                                this.kills++;
+                                params.preyDeaths++;
+                            }
+                        }
+                    }
+                } else {
+                    // Wander if no prey
+                    this.velocity.add(p5.Vector.random2D().mult(0.05));
+                }
+                
+                this.hunger++;
+                this.energy = max(this.energy - 0.02, 0);
+                
+                // Slowdown if too big
+                if (this.size > params.predatorSize * 1.5 && this.hunger > 1000 && predators.length < params.maxPredators) {
+                    this.reproduce();
+                }
+                
+                // Die if starving
+                if (this.energy <= 0 && predators.length > params.initialPredators) {
+                    let index = predators.indexOf(this);
+                    if (index > -1) {
+                        predators.splice(index, 1);
+                    }
+                }
+                
+                // Update position
+                this.position.add(this.velocity);
+                
+                // Wrap around edges
+                if (this.position.x > width) this.position.x = 0;
+                if (this.position.x < 0) this.position.x = width;
+                if (this.position.y > height) this.position.y = 0;
+                if (this.position.y < 0) this.position.y = height;
+                
+                // Limit speed
+                this.velocity.limit(currentMaxSpeed);
+                
+                // Record history for trails
+                let v = createVector(this.position.x, this.position.y);
+                this.history.push(v);
+                if (this.history.length > params.trailLength) {
+                    this.history.splice(0, 1);
+                }
+            }
+
+            reproduce() {
+                if (predators.length < params.maxPredators) {
+                    let newPredator = new Predator(this.position.x + random(-20, 20), this.position.y + random(-20, 20));
+                    newPredator.velocity = this.velocity.copy().rotate(random(-PI/4, PI/4));
+                    newPredator.size = params.predatorSize;
+                    newPredator.maxSpeed = parseFloat(document.getElementById('predatorSpeed').value);
+                    predators.push(newPredator);
+                    this.size = params.predatorSize;
+                    this.energy = this.energy / 2;
+                }
+            }
+
+            show() {
+                // Draw history trail
+                noFill();
+                beginShape();
+                for (let i = 0; i < this.history.length; i++) {
+                    let alpha = map(i, 0, this.history.length, 150, 30);
+                    stroke(255, 100, 100, alpha * (this.energy/100));
+                    vertex(this.history[i].x, this.history[i].y);
+                }
+                endShape();
+                
+                // Draw predator with pulsing effect based on hunger
+                let hungerPulse = this.hunger > 1000 ? 0.5 + sin(frameCount * 0.2) * 0.5 : 0.2;
+                let pulseSize = this.size + sin(frameCount * 0.1 + this.pulseOffset) * hungerPulse * 3;
+                let energySize = map(this.energy, 0, 100, pulseSize * 0.8, pulseSize * 1.2);
+                
+                fill(255, 100 + this.kills * 2, 100, 200);
+                noStroke();
+                ellipse(this.position.x, this.position.y, energySize);
+                
+                // Draw predator eyes
+                let eyeSize = energySize * 0.3;
+                fill(255);
+                let eye1 = this.velocity.copy().rotate(-PI/8).setMag(energySize * 0.3).add(this.position);
+                let eye2 = this.velocity.copy().rotate(PI/8).setMag(energySize * 0.3).add(this.position);
+                ellipse(eye1.x, eye1.y, eyeSize);
+                ellipse(eye2.x, eye2.y, eyeSize);
+                fill(0);
+                let pupil1 = this.velocity.copy().setMag(energySize * 0.1).add(eye1);
+                let pupil2 = this.velocity.copy().setMag(energySize * 0.1).add(eye2);
+                ellipse(pupil1.x, pupil1.y, eyeSize * 0.6);
+                ellipse(pupil2.x, pupil2.y, eyeSize * 0.6);
+            }
+        }
+
+        // Create stars for starry background
+        function createStars() {
+            stars = [];
+            for (let i = 0; i < 200; i++) {
+                stars.push({
+                    x: random(width),
+                    y: random(height),
+                    size: random(0.5, 2),
+                    brightness: random(100, 255),
+                    twinkleSpeed: random(0.01, 0.05)
+                });
+            }
+        }
+
+        function setup() {
+            // Create canvas responsive to container
+            let canvasContainer = document.getElementById('canvas-container');
+            canvas = createCanvas(canvasContainer.offsetWidth, 600);
+            canvas.parent('canvas-container');
+            
+            // Initialize stars for background
+            createStars();
+            
+            // Set up initial populations based on UI values
+            resetSimulation();
+            
+            // Initialize simulation time
+            params.simulationStartTime = millis();
+            lastUpdateTime = millis();
+            
+            // Set up UI controls
+            setupControls();
+        }
+
+        function draw() {
+            // Calculate delta time for smooth animations when paused
+            let currentTime = millis();
+            let deltaTime = isPaused ? 0 : currentTime - lastUpdateTime;
+            lastUpdateTime = currentTime;
+            simulationTime += deltaTime;
+            
+            // Update simulation time display
+            updateTimeDisplay();
+            
+            // Draw selected background
+            drawBackground();
+            
+            // Day/night cycle if enabled
+            if (params.dayNightCycle) {
+                dayNightCycle();
+            }
+            
+            // Update and show all particles if not paused
+            if (!isPaused) {
+                for (let i = particles.length - 1; i >= 0; i--) {
+                    particles[i].update();
+                }
+                
+                for (let predator of predators) {
+                    predator.update();
+                }
+                
+                // Population control
+                reproducePrey();
+                cullPredators();
+            }
+            
+            // Draw all entities
+            for (let particle of particles) {
+                particle.show();
+            }
+            
+            for (let predator of predators) {
+                predator.show();
+            }
+            
+            // Draw debug info if enabled
+            if (params.showDebug) {
+                drawDebugInfo();
+            }
+            
+            // Update stats display
+            updateStats();
+        }
+
+        function drawBackground() {
+            // Different background types based on selection
+            switch(params.backgroundType) {
+                case 'stars':
+                    // Starry background
+                    background(0);
+                    noStroke();
+                    for (let star of stars) {
+                        let twinkle = sin(frameCount * star.twinkleSpeed) * 50 + 150;
+                        fill(255, 255, 255, twinkle);
+                        ellipse(star.x, star.y, star.size);
+                    }
+                    break;
+                    
+                case 'gradient':
+                    // Color gradient
+                    let c1 = color(10, 20, 50);
+                    let c2 = color(50, 10, 30);
+                    for (let y = 0; y < height; y++) {
+                        let inter = map(y, 0, height, 0, 1);
+                        let c = lerpColor(c1, c2, inter);
+                        stroke(c);
+                        line(0, y, width, y);
+                    }
+                    break;
+                    
+                case 'grid':
+                    // Grid pattern
+                    background(15, 23, 42);
+                    stroke(30, 41, 59, 100);
+                    strokeWeight(0.5);
+                    let gridSize = 30;
+                    for (let x = 0; x < width; x += gridSize) {
+                        line(x, 0, x, height);
+                    }
+                    for (let y = 0; y < height; y += gridSize) {
+                        line(0, y, width, y);
+                    }
+                    break;
+                    
+                default:
+                    // Plain dark background
+                    background(15, 23, 42);
+                    break;
+            }
+        }
+
+        function dayNightCycle() {
+            let cycleDuration = 20000; // 20 seconds
+            let now = millis();
+            
+            if (now - lastCycleChange > cycleDuration) {
+                isNight = !isNight;
+                lastCycleChange = now;
+            }
+            
+            // Apply day/night tint to entire canvas
+            if (isNight) {
+                fill(0, 0, 30, 30);
+                noStroke();
+                rect(0, 0, width, height);
+            }
+        }
+
+        function reproducePrey() {
+            let now = millis();
+            let reproductionRate = map(parseInt(document.getElementById('preyReproduction').value), 1, 20, 2000, 20000);
+            
+            if (now - lastReproductionTime > reproductionRate && particles.length < params.maxPrey) {
+                if (particles.length > 0) {
+                    let parent = particles[Math.floor(random(particles.length))];
+                    let offspring = new Particle(
+                        parent.position.x + random(-20, 20),
+                        parent.position.y + random(-20, 20),
+                        parent.maxSpeed * random(0.9, 1.1)
+                    );
+                    offspring.generation = parent.generation + 1;
+                    particles.push(offspring);
+                    params.preyBirths++;
+                }
+                lastReproductionTime = now;
+            }
+        }
+
+        function cullPredators() {
+            for (let i = predators.length - 1; i >= 0; i--) {
+                if (predators[i].energy <= 0 && predators.length > params.initialPredators) {
+                    predators.splice(i, 1);
+                }
+            }
+        }
+
+        function updateStats() {
+            document.getElementById('prey-count').textContent = particles.length;
+            document.getElementById('predator-count').textContent = predators.length;
+            document.getElementById('fps').textContent = frameRate().toFixed(1);
+            
+            // Update the info panel stats
+            document.getElementById('stats-prey').textContent = particles.length;
+            document.getElementById('stats-predators').textContent = predators.length;
+            document.getElementById('stats-births').textContent = params.preyBirths;
+            document.getElementById('stats-deaths').textContent = params.preyDeaths;
+        }
+
+        function updateTimeDisplay() {
+            let totalSeconds = floor(simulationTime / 1000);
+            let minutes = floor(totalSeconds / 60);
+            let seconds = totalSeconds % 60;
+            document.getElementById('sim-time').textContent = 
+                nf(minutes, 2) + ":" + nf(seconds, 2);
+        }
+
+        function drawDebugInfo() {
+            fill(255);
+            textSize(12);
+            text(`Particles: ${particles.length}`, 20, 20);
+            text(`Predators: ${predators.length}`, 20, 40);
+            text(`FPS: ${frameRate().toFixed(1)}`, 20, 60);
+        }
+
+        function setupControls() {
+            // Background type selector
+            document.getElementById('backgroundType').addEventListener('change', function() {
+                params.backgroundType = this.value;
+                if (this.value === 'stars') {
+                    createStars();
+                }
+            });
+            
+            // Day/night cycle toggle
+            document.getElementById('dayNightToggle').addEventListener('change', function() {
+                params.dayNightCycle = this.checked;
+            });
+            
+            // Prey count slider
+            let preyCountSlider = document.getElementById('preyCount');
+            preyCountSlider.addEventListener('input', function() {
+                document.getElementById('preyCountValue').textContent = this.value;
+                params.initialPrey = parseInt(this.value);
+            });
+            preyCountSlider.value = params.initialPrey;
+            
+            // Prey speed slider
+            let preySpeedSlider = document.getElementById('preySpeed');
+            preySpeedSlider.addEventListener('input', function() {
+                document.getElementById('preySpeedValue').textContent = parseFloat(this.value).toFixed(1);
+            });
+            
+            // Prey reproduction slider
+            let preyReproductionSlider = document.getElementById('preyReproduction');
+            preyReproductionSlider.addEventListener('input', function() {
+                document.getElementById('preyReproductionValue').textContent = this.value + "s";
+            });
+            
+            // Predator count slider
+            let predatorCountSlider = document.getElementById('predatorCount');
+            predatorCountSlider.addEventListener('input', function() {
+                document.getElementById('predatorCountValue').textContent = this.value;
+                params.initialPredators = parseInt(this.value);
+            });
+            predatorCountSlider.value = params.initialPredators;
+            
+            // Predator speed slider
+            let predatorSpeedSlider = document.getElementById('predatorSpeed');
+            predatorSpeedSlider.addEventListener('input', function() {
+                document.getElementById('predatorSpeedValue').textContent = parseFloat(this.value).toFixed(1);
+                for (let p of predators) {
+                    p.maxSpeed = parseFloat(this.value);
+                }
+            });
+            
+            // Predator aggression slider
+            let predatorAggressionSlider = document.getElementById('predatorAggression');
+            predatorAggressionSlider.addEventListener('input', function() {
+                let val = parseInt(this.value);
+                document.getElementById('predatorAggressionValue').textContent = val + "%";
+                params.predatorAggression = val;
+            });
+            
+            // Add prey button
+            document.getElementById('add-prey').addEventListener('click', function() {
+                if (particles.length < params.maxPrey * 1.2) {
+                    for (let i = 0; i < 10; i++) {
+                        particles.push(new Particle());
+                    }
+                }
+            });
+            
+            // Add predator button
+            document.getElementById('add-predator').addEventListener('click', function() {
+                if (predators.length < params.maxPredators) {
+                    predators.push(new Predator());
+                }
+            });
+            
+            // Reset button
+            document.getElementById('reset-btn').addEventListener('click', function() {
+                resetSimulation();
+            });
+            
+            // Pause button
+            document.getElementById('pause-btn').addEventListener('click', function() {
+                isPaused = !isPaused;
+                this.innerHTML = isPaused ? 
+                    '<i class="fas fa-play mr-1"></i> Play' : 
+                    '<i class="fas fa-pause mr-1"></i> Pause';
+                this.className = isPaused ? 
+                    'bg-green-600 hover:bg-green-500 text-white py-2 px-3 rounded btn text-sm flex items-center justify-center' : 
+                    'bg-blue-600 hover:bg-blue-500 text-white py-2 px-3 rounded btn text-sm flex items-center justify-center';
+            });
+        }
+
+        function resetSimulation() {
+            particles = [];
+            predators = [];
+            
+            // Create initial populations based on current UI values
+            let initialPrey = parseInt(document.getElementById('preyCount').value);
+            let initialPredators = parseInt(document.getElementById('predatorCount').value);
+            
+            for (let i = 0; i < initialPrey; i++) {
+                particles.push(new Particle());
+            }
+            
+            for (let i = 0; i < initialPredators; i++) {
+                predators.push(new Predator());
+            }
+            
+            // Reset stats
+            params.preyBirths = 0;
+            params.preyDeaths = 0;
+            params.simulationStartTime = millis();
+            simulationTime = 0;
+            
+            // Reset reproduction timer
+            lastReproductionTime = millis();
+        }
+
+        function mousePressed() {
+            // Spawn new prey particles at mouse position when clicked
+            if (particles.length < params.maxPrey * 1.2) {
+                for (let i = 0; i < 5; i++) {
+                    particles.push(new Particle(mouseX + random(-20, 20), mouseY + random(-20, 20)));
+                }
+            }
+        }
+
+        function keyPressed() {
+            // Allow temporary speed boost for predators when 'P' key is pressed
+            if (key === 'p' || key === 'P') {
+                speedBoostActive = true;
+            }
+            
+            // Toggle debug mode with 'D' key
+            if (key === 'd' || key === 'D') {
+                params.showDebug = !params.showDebug;
+            }
+        }
+
+        function keyReleased() {
+            if (key === 'p' || key === 'P') {
+                speedBoostActive = false;
+            }
+        }
+
+        function windowResized() {
+            let canvasContainer = document.getElementById('canvas-container');
+            resizeCanvas(canvasContainer.offsetWidth, 600);
+            if (params.backgroundType === 'stars') {
+                createStars();
+            }
+        }
+    </script>
+</body>
+</html>
